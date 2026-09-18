@@ -392,7 +392,13 @@
     }
     stars = [];
     for (var i=0;i<70;i++){
-      stars.push({ x: Math.random()*W, y: Math.random()*H*3 - H*2, r: Math.random()*1.6+0.3, tw: Math.random()*Math.PI*2 });
+      var starR = Math.random()*1.6+0.3;
+      stars.push({
+        x: Math.random()*W, y: Math.random()*H*3 - H*2, r: starR,
+        tw: Math.random()*Math.PI*2,
+        col: STAR_COLORS[Math.floor(Math.random()*STAR_COLORS.length)],
+        sparkle: starR > 1.5 && Math.random() < 0.5
+      });
     }
   }
 
@@ -407,18 +413,71 @@
 
   function skyColor(m){
     var t = Math.min(1, m/4000);
-    var top = lerpColor([13,17,48], [3,4,18], t);
-    var bottom = lerpColor([36,27,78], [11,17,48], t);
-    return [top, bottom];
+    var top = lerpColor([16,20,54], [3,4,18], t);
+    var mid = lerpColor([32,26,72], [8,10,34], t);
+    var bottom = lerpColor([40,29,84], [12,18,50], t);
+    return [top, mid, bottom];
+  }
+
+  var STAR_COLORS = ['#f2f0ff', '#bcdcff', '#d8c4ff'];
+
+  function drawBgHexGrid(){
+    var spacing = 46;
+    var r = spacing*0.42;
+    var offsetY = (-scrollY*0.12) % spacing;
+    var alpha = Math.min(0.10, 0.03 + altitudeM*0.00003);
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.strokeStyle = '#8ecbff';
+    ctx.lineWidth = 1;
+    for (var row=-1; row*spacing-offsetY < H+spacing; row++){
+      var y = row*spacing - offsetY;
+      var xOff = (((row%2)+2)%2===0) ? 0 : spacing*0.5;
+      for (var col=-1; col*spacing+xOff < W+spacing; col++){
+        var x = col*spacing + xOff;
+        var pts = hexPoints(x, y, r);
+        ctx.beginPath();
+        ctx.moveTo(pts[0][0], pts[0][1]);
+        for (var k=1;k<6;k++) ctx.lineTo(pts[k][0], pts[k][1]);
+        ctx.closePath();
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
+
+  function drawNebulae(){
+    var alpha = Math.min(0.5, 0.18 + altitudeM*0.00006);
+    var specs = [
+      { x:0.22, y:0.20, r:180, c:'99,108,255', speed:0.18 },
+      { x:0.78, y:0.55, r:220, c:'185,139,255', speed:0.10 },
+      { x:0.45, y:0.85, r:160, c:'61,224,255', speed:0.14 }
+    ];
+    ctx.save();
+    for (var i=0;i<specs.length;i++){
+      var s = specs[i];
+      var driftY = ((s.y*H - scrollY*s.speed) % (H*2.2) + H*2.2) % (H*2.2) - H*0.6;
+      var cx = s.x*W, cy = driftY;
+      var grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, s.r);
+      grad.addColorStop(0, 'rgba('+s.c+','+alpha+')');
+      grad.addColorStop(1, 'rgba('+s.c+',0)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(cx-s.r, cy-s.r, s.r*2, s.r*2);
+    }
+    ctx.restore();
   }
 
   function drawBackground(){
     var cols = skyColor(altitudeM);
     var g = ctx.createLinearGradient(0,0,0,H);
     g.addColorStop(0, rgb(cols[0]));
-    g.addColorStop(1, rgb(cols[1]));
+    g.addColorStop(0.55, rgb(cols[1]));
+    g.addColorStop(1, rgb(cols[2]));
     ctx.fillStyle = g;
     ctx.fillRect(0,0,W,H);
+
+    drawNebulae();
+    drawBgHexGrid();
 
     var starAlpha = Math.min(1, altitudeM/1200);
     ctx.save();
@@ -428,12 +487,26 @@
       sy = ((sy % (H*3)) + H*3) % (H*3) - H*2;
       var tw = 0.5 + 0.5*Math.sin(s.tw + altitudeM*0.002 + i);
       ctx.globalAlpha = starAlpha * tw;
-      ctx.fillStyle = '#f2f0ff';
+      ctx.fillStyle = s.col;
       ctx.beginPath();
       ctx.arc(s.x, sy, s.r, 0, Math.PI*2);
       ctx.fill();
+      if (s.sparkle){
+        ctx.strokeStyle = s.col;
+        ctx.lineWidth = 0.8;
+        ctx.beginPath();
+        ctx.moveTo(s.x - s.r*2.2, sy); ctx.lineTo(s.x + s.r*2.2, sy);
+        ctx.moveTo(s.x, sy - s.r*2.2); ctx.lineTo(s.x, sy + s.r*2.2);
+        ctx.stroke();
+      }
     }
     ctx.restore();
+
+    var vig = ctx.createRadialGradient(W/2, H*0.45, H*0.35, W/2, H*0.45, H*0.75);
+    vig.addColorStop(0, 'rgba(0,0,0,0)');
+    vig.addColorStop(1, 'rgba(0,0,0,0.35)');
+    ctx.fillStyle = vig;
+    ctx.fillRect(0,0,W,H);
   }
 
   function hexPoints(cx,cy,R){
