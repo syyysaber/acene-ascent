@@ -228,7 +228,10 @@
   var JUMP_V = -11.2;
   var BN_JOLT_V = -19;
   var FOLD_KICK_DEG = 40;   // the C-S-S-C / meso-B...B fold's own bend angle
-  var FOLD_KICK_MAG = 12;
+  var FOLD_KICK_MAG = 14.6; // sized so the vertical component alone still
+                             // matches a normal jump (magnitude*cos(40deg)
+                             // = ~11.2) - the sideways kick is a bonus on
+                             // top of that, not a bite out of the height
   var MOVE_ACCEL = 0.9;
   var MOVE_MAX = 4.6;
   var FRICTION = 0.90;
