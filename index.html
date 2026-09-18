@@ -221,6 +221,7 @@
   var PULL_RADIUS = 78;
   var CAPTURE_RADIUS = 15;
   var PULL_ACCEL = 0.55;
+  var BN_INVINCIBLE_DURATION = 0.55;
 
   function rand(a,b){ return a + Math.random()*(b-a); }
   function lerpColor(a,b,t){ return [a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, a[2]+(b[2]-a[2])*t]; }
@@ -286,7 +287,7 @@
 
   function resetGame(){
     var startW = ringWidth(2);
-    player = { x: W/2 - 16, y: H - 120, w:32, h:32, vx:0, vy:JUMP_V, excitedT:0 };
+    player = { x: W/2 - 16, y: H - 120, w:32, h:32, vx:0, vy:JUMP_V, excitedT:0, invincibleT:0 };
     platforms = [];
     boosts = [];
     hazards = [];
@@ -539,14 +540,15 @@
     var cx = player.x + player.w/2, cy = player.y + player.h/2;
     var R = player.w/2;
     var excited = player.excitedT > 0;
-    var core = excited ? '#fff6c9' : '#eafcff';
-    var ring = excited ? '#ffd23d' : '#8ecbff';
+    var shielded = excited || player.invincibleT > 0;
+    var core = shielded ? '#fff6c9' : '#eafcff';
+    var ring = shielded ? '#ffd23d' : '#8ecbff';
     var spin = altitudeM*0.03 + (player.x*0.01);
 
     ctx.save();
 
     // two crossed orbital rings, purely decorative
-    ctx.globalAlpha = excited ? 0.55 : 0.4;
+    ctx.globalAlpha = shielded ? 0.55 : 0.4;
     ctx.lineWidth = 1.3;
     ctx.strokeStyle = '#b98bff';
     ctx.save();
@@ -591,19 +593,28 @@
     if (keys.right || touchDir > 0) accel += MOVE_ACCEL;
     player.vx += accel * dt;
 
+    if (player.invincibleT > 0) player.invincibleT -= dt/60;
+    // Mid-flight (hv excited state, or the brief grace period right after a
+    // B-N jolt) the electron is moving too fast to react to a trap's pull
+    // field, so it's immune to it for that window instead of getting
+    // yanked in with no chance to steer away.
+    var immune = player.excitedT > 0 || player.invincibleT > 0;
+
     var pcx = player.x + player.w/2, pcy = player.y + player.h/2;
-    for (var hIdx=0; hIdx<hazards.length; hIdx++){
-      var hz = hazards[hIdx];
-      var dx = hz.x - pcx, dy = hz.y - pcy;
-      var dist = Math.hypot(dx, dy) || 1;
-      if (dist < PULL_RADIUS){
-        var strength = (1 - dist/PULL_RADIUS) * PULL_ACCEL;
-        player.vx += (dx/dist) * strength * dt;
-        player.vy += (dy/dist) * strength * dt;
-      }
-      if (dist < CAPTURE_RADIUS){
-        endGame('quenched');
-        return;
+    if (!immune){
+      for (var hIdx=0; hIdx<hazards.length; hIdx++){
+        var hz = hazards[hIdx];
+        var dx = hz.x - pcx, dy = hz.y - pcy;
+        var dist = Math.hypot(dx, dy) || 1;
+        if (dist < PULL_RADIUS){
+          var strength = (1 - dist/PULL_RADIUS) * PULL_ACCEL;
+          player.vx += (dx/dist) * strength * dt;
+          player.vy += (dy/dist) * strength * dt;
+        }
+        if (dist < CAPTURE_RADIUS){
+          endGame('quenched');
+          return;
+        }
       }
     }
 
@@ -647,6 +658,7 @@
             player.vy = JUMP_V * 0.9;
           } else if (pl.type === 'bn'){
             player.vy = BN_JOLT_V;
+            player.invincibleT = BN_INVINCIBLE_DURATION;
           } else {
             player.vy = JUMP_V;
           }
