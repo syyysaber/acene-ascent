@@ -1,0 +1,532 @@
+<title>Acene Ascent</title>
+<style>
+  :root{
+    --space-black:#05061a;
+    --space-deep:#0b1130;
+    --nebula:#241b4e;
+    --cloud:#f2f0ff;
+    --cloud-dim:#a9a4d6;
+    --gold:#ffd23d;
+    --danger:#ff5c72;
+    --helicene:#b98bff;
+    --alien:#c6ff3d;
+    --alien-dark:#8fcc1a;
+  }
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:var(--space-black);
+    color:var(--cloud);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    overflow:hidden;
+    font-family:'Rubik',system-ui,sans-serif;
+    -webkit-tap-highlight-color:transparent;
+    touch-action:none;
+  }
+  #stage{
+    position:relative;
+    width:min(100%, 420px);
+    height:min(100%, 720px);
+    aspect-ratio:400/680;
+    max-height:100%;
+    max-width:100%;
+    border-radius:14px;
+    overflow:hidden;
+    box-shadow:0 0 0 1px rgba(198,255,61,0.12), 0 30px 80px rgba(0,0,0,0.6);
+    background:var(--space-deep);
+  }
+  canvas{ display:block; width:100%; height:100%; }
+  .pixel{font-family:'Press Start 2P',monospace;}
+  #hud{
+    position:absolute; top:0; left:0; right:0;
+    display:flex; justify-content:space-between; align-items:flex-start;
+    padding:14px 16px; pointer-events:none; z-index:5;
+  }
+  #hud .stat{ font-size:11px; line-height:1.6; color:var(--cloud); text-shadow:0 2px 0 rgba(0,0,0,0.5); }
+  #hud .stat b{ display:block; color:var(--alien); font-size:15px; }
+  #hud .best{ text-align:right; color:var(--cloud-dim); }
+  #hud .best b{ color:var(--gold); }
+
+  .overlay{
+    position:absolute; inset:0;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:14px; text-align:center; padding:26px 22px;
+    background:radial-gradient(ellipse at 50% 26%, rgba(36,27,78,0.94), rgba(5,6,26,0.98));
+    z-index:10; overflow-y:auto;
+  }
+  .overlay[hidden]{ display:none; }
+  .title{ font-size:24px; line-height:1.5; color:var(--alien); text-shadow:3px 3px 0 var(--helicene); letter-spacing:1px; }
+  .tagline{ font-size:12.5px; color:var(--cloud-dim); max-width:290px; line-height:1.65; }
+  .alien-preview{ width:56px; height:56px; filter:drop-shadow(0 8px 14px rgba(198,255,61,0.35)); }
+  .btn{
+    font-family:'Press Start 2P',monospace; font-size:12px; color:var(--space-black);
+    background:var(--alien); border:none; border-radius:8px; padding:14px 22px; cursor:pointer;
+    box-shadow:0 5px 0 var(--alien-dark); letter-spacing:0.5px; flex-shrink:0;
+  }
+  .btn:active{ transform:translateY(3px); box-shadow:0 2px 0 var(--alien-dark); }
+  .hint{ font-size:10.5px; color:var(--cloud-dim); line-height:1.7; }
+  .hint b{ color:var(--helicene); }
+  .legend{ list-style:none; margin:2px 0; padding:10px 14px; display:flex; flex-direction:column; gap:7px;
+    background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:10px;
+    text-align:left; font-size:10.5px; color:var(--cloud-dim); max-width:300px; }
+  .legend li{ display:flex; align-items:center; gap:8px; }
+  .legend b{ color:var(--cloud); }
+  .swatch{ width:22px; height:12px; border-radius:3px; flex-shrink:0; }
+  .sw-acene{ background:linear-gradient(90deg,#3de0ff,#ff6b35); }
+  .sw-bn{ background:var(--gold); }
+  .sw-bb{ background:var(--danger); }
+  .sw-heli{ background:var(--helicene); }
+  .footnote{ font-size:9px; color:#6d68a0; max-width:290px; line-height:1.5; font-style:italic; }
+  .score-row{ display:flex; gap:26px; justify-content:center; }
+  .score-box{ display:flex; flex-direction:column; gap:6px; }
+  .score-box span{ font-size:10px; color:var(--cloud-dim); letter-spacing:1px; }
+  .score-box b{ font-family:'Press Start 2P',monospace; font-size:20px; color:var(--cloud); }
+  .score-box.new b{ color:var(--gold); }
+</style>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Rubik:wght@400;600&display=swap" rel="stylesheet">
+
+<div id="stage">
+  <canvas id="game" width="400" height="680" aria-label="Acene Ascent game canvas"></canvas>
+
+  <div id="hud">
+    <div class="stat">ALTITUDE<b id="altitude">0m</b></div>
+    <div class="stat best">BEST<b id="bestScore">0m</b></div>
+  </div>
+
+  <div id="start" class="overlay">
+    <svg class="alien-preview" viewBox="0 0 64 64" fill="none">
+      <ellipse cx="32" cy="40" rx="20" ry="18" fill="var(--alien)"/>
+      <circle cx="24" cy="34" r="7" fill="#05061a"/>
+      <circle cx="42" cy="34" r="7" fill="#05061a"/>
+      <circle cx="26" cy="32" r="2.4" fill="#fff"/>
+      <circle cx="44" cy="32" r="2.4" fill="#fff"/>
+      <path d="M14 46 Q10 54 6 50" stroke="var(--alien-dark)" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <path d="M50 46 Q54 54 58 50" stroke="var(--alien-dark)" stroke-width="3" fill="none" stroke-linecap="round"/>
+    </svg>
+    <div class="title pixel">ACENE<br/>ASCENT</div>
+    <p class="tagline">A stray π-electron fell out of conjugation. Hop up a ladder of aromatic rings back to the top before the whole system falls apart.</p>
+    <ul class="legend">
+      <li><span class="swatch sw-acene"></span><span><b>Acene</b> — benzene → pentacene, bigger rings as you climb</span></li>
+      <li><span class="swatch sw-bn"></span><span><b>B–N acene</b> — isoelectronic swap, launches you sky-high</span></li>
+      <li><span class="swatch sw-bb"></span><span><b>B–B acene</b> — electron-poor and unstable, crumbles in one step</span></li>
+      <li><span class="swatch sw-heli"></span><span><b>Helicene</b> — angularly fused and twisted, drifts sideways</span></li>
+    </ul>
+    <button id="startBtn" class="btn">LAUNCH ↑</button>
+    <p class="hint">Drag / touch left &amp; right of your electron to steer,<br/>or use <b>← →</b> / <b>A D</b> on a keyboard.</p>
+    <p class="footnote">B–B motif inspired by recent diboraacene chemistry — protecting groups omitted for gameplay.</p>
+  </div>
+
+  <div id="gameover" class="overlay" hidden>
+    <div class="title pixel" style="font-size:20px;">SIGNAL<br/>LOST</div>
+    <div class="score-row">
+      <div class="score-box" id="finalScoreBox"><span>ALTITUDE</span><b id="finalScore">0m</b></div>
+      <div class="score-box" id="bestScoreBox"><span>BEST</span><b id="finalBest">0m</b></div>
+    </div>
+    <button id="retryBtn" class="btn">RE-LAUNCH ↑</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  var canvas = document.getElementById('game');
+  var ctx = canvas.getContext('2d');
+  var W = canvas.width, H = canvas.height;
+
+  var hudAltitude = document.getElementById('altitude');
+  var hudBest = document.getElementById('bestScore');
+  var startScreen = document.getElementById('start');
+  var overScreen = document.getElementById('gameover');
+  var finalScoreEl = document.getElementById('finalScore');
+  var finalBestEl = document.getElementById('finalBest');
+  var bestScoreBox = document.getElementById('bestScoreBox');
+  var startBtn = document.getElementById('startBtn');
+  var retryBtn = document.getElementById('retryBtn');
+
+  var GRAVITY = 0.32;
+  var JUMP_V = -11.2;
+  var SPRING_V = -19;
+  var MOVE_ACCEL = 0.9;
+  var MOVE_MAX = 4.6;
+  var FRICTION = 0.90;
+  var PLATFORM_H = 14;
+
+  var HEX_R = 13;
+  var HEX_STEP = HEX_R * 1.732;
+  function ringWidth(n){ return HEX_STEP * n; }
+
+  var BORON = '#ffb38a';
+  var NITROGEN = '#5aa9ff';
+  var ACENE_COOL = [61,224,255];
+  var ACENE_HOT = [255,107,53];
+
+  var highScore = 0;
+  var state = 'start';
+  var keys = { left:false, right:false };
+  var touchDir = 0;
+
+  var player, platforms, scrollY, altitudeM, stars, lastTs;
+
+  function rand(a,b){ return a + Math.random()*(b-a); }
+  function lerpColor(a,b,t){ return [a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, a[2]+(b[2]-a[2])*t]; }
+  function rgb(c,a){ return 'rgba('+(c[0]|0)+','+(c[1]|0)+','+(c[2]|0)+','+(a==null?1:a)+')'; }
+
+  function ringCountForDifficulty(diff){
+    var n = 1 + Math.floor(diff*4 + Math.random()*1.3);
+    return Math.max(1, Math.min(5, n));
+  }
+
+  function difficultyAt(m){ return Math.min(1, m / 3500); }
+
+  function makePlatform(y){
+    var diff = difficultyAt(altitudeM);
+    var roll = Math.random();
+    var type, ringCount;
+    var bbP = 0.09 + diff*0.10;
+    var bnP = bbP + 0.08 + diff*0.05;
+    var heliP = bnP + 0.20 + diff*0.15;
+    if (roll < bbP){ type = 'bb'; ringCount = 2; }
+    else if (roll < bnP){ type = 'bn'; ringCount = 2; }
+    else if (roll < heliP){ type = 'helicene'; ringCount = 3; }
+    else { type = 'acene'; ringCount = ringCountForDifficulty(diff); }
+
+    var w = ringWidth(ringCount);
+    return {
+      x: rand(10, W - w - 10),
+      y: y,
+      w: w,
+      ringCount: ringCount,
+      dopeRing: (type==='bn'||type==='bb') ? Math.floor(Math.random()*ringCount) : -1,
+      type: type,
+      dir: Math.random() < 0.5 ? -1 : 1,
+      speed: rand(0.8, 1.6 + diff*1.2),
+      broken: false,
+      fade: 1
+    };
+  }
+
+  function resetGame(){
+    var startW = ringWidth(2);
+    player = { x: W/2 - 16, y: H - 120, w:32, h:32, vx:0, vy:JUMP_V, facing:1 };
+    platforms = [];
+    scrollY = 0;
+    altitudeM = 0;
+
+    platforms.push({ x: W/2 - startW/2, y:H-40, w:startW, ringCount:2, dopeRing:-1, type:'acene', dir:1, broken:false, fade:1 });
+    var y = H - 40 - rand(60,90);
+    while (y > -H) {
+      platforms.push(makePlatform(y));
+      y -= rand(60, 95);
+    }
+    stars = [];
+    for (var i=0;i<70;i++){
+      stars.push({ x: Math.random()*W, y: Math.random()*H*3 - H*2, r: Math.random()*1.6+0.3, tw: Math.random()*Math.PI*2 });
+    }
+  }
+
+  function loadBest(data){
+    try {
+      highScore = (data && typeof data.highScore === 'number') ? data.highScore
+                : parseInt(localStorage.getItem('aceneAscentBest') || '0', 10) || 0;
+    } catch(e){ highScore = (data && data.highScore) || 0; }
+    hudBest.textContent = highScore + 'm';
+  }
+  function saveBest(){ try { localStorage.setItem('aceneAscentBest', String(highScore)); } catch(e){} }
+
+  function skyColor(m){
+    var t = Math.min(1, m/4000);
+    var top = lerpColor([13,17,48], [3,4,18], t);
+    var bottom = lerpColor([36,27,78], [11,17,48], t);
+    return [top, bottom];
+  }
+
+  function drawBackground(){
+    var cols = skyColor(altitudeM);
+    var g = ctx.createLinearGradient(0,0,0,H);
+    g.addColorStop(0, rgb(cols[0]));
+    g.addColorStop(1, rgb(cols[1]));
+    ctx.fillStyle = g;
+    ctx.fillRect(0,0,W,H);
+
+    var starAlpha = Math.min(1, altitudeM/1200);
+    ctx.save();
+    for (var i=0;i<stars.length;i++){
+      var s = stars[i];
+      var sy = s.y + scrollY*0.4;
+      sy = ((sy % (H*3)) + H*3) % (H*3) - H*2;
+      var tw = 0.5 + 0.5*Math.sin(s.tw + altitudeM*0.002 + i);
+      ctx.globalAlpha = starAlpha * tw;
+      ctx.fillStyle = '#f2f0ff';
+      ctx.beginPath();
+      ctx.arc(s.x, sy, s.r, 0, Math.PI*2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function hexPoints(cx,cy,R){
+    var pts=[];
+    for (var k=0;k<6;k++){
+      var ang = (Math.PI/180)*(30+60*k);
+      pts.push([cx+R*Math.cos(ang), cy-R*Math.sin(ang)]);
+    }
+    return pts;
+  }
+
+  function drawAceneChain(leftX, centerY, ringCount, opt){
+    var cx0 = leftX + HEX_R*0.866;
+    for (var i=0;i<ringCount;i++){
+      var cx = cx0 + i*HEX_STEP;
+      var cy = centerY + (opt.zigzag ? (i%2===0 ? 0 : -HEX_R*0.55) : 0);
+      var pts = hexPoints(cx, cy, HEX_R);
+      ctx.save();
+      if (opt.glow){ ctx.shadowColor = opt.glow; ctx.shadowBlur = 9; }
+      ctx.beginPath();
+      ctx.moveTo(pts[0][0], pts[0][1]);
+      for (var k=1;k<6;k++) ctx.lineTo(pts[k][0], pts[k][1]);
+      ctx.closePath();
+      ctx.fillStyle = opt.fill;
+      ctx.fill();
+      ctx.lineWidth = 1.6;
+      ctx.strokeStyle = opt.stroke;
+      ctx.stroke();
+      ctx.restore();
+
+      ctx.save();
+      ctx.globalAlpha = 0.5;
+      ctx.strokeStyle = opt.stroke;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(cx, cy, HEX_R*0.55, 0, Math.PI*2);
+      ctx.stroke();
+      ctx.restore();
+
+      if (opt.dopeRing === i){
+        var idxs = [0,1];
+        for (var d=0; d<idxs.length; d++){
+          var p = pts[idxs[d]];
+          var color = opt.dopeColors[d];
+          var r = Math.max(4, HEX_R*0.4);
+          ctx.beginPath();
+          ctx.arc(p[0], p[1], r, 0, Math.PI*2);
+          ctx.fillStyle = color;
+          ctx.fill();
+          ctx.lineWidth = 1;
+          ctx.strokeStyle = 'rgba(5,6,26,0.6)';
+          ctx.stroke();
+          if (HEX_R > 10){
+            ctx.fillStyle = '#1a1030';
+            ctx.font = 'bold ' + Math.round(HEX_R*0.85) + 'px Rubik, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(opt.dopeLabels[d], p[0], p[1]+0.5);
+          }
+        }
+      }
+    }
+  }
+
+  function drawPlatform(p){
+    if (p.broken && p.fade <= 0) return;
+    ctx.save();
+    ctx.globalAlpha = p.fade;
+    var centerY = p.y + 6;
+    if (p.type === 'acene'){
+      var t = (p.ringCount - 1) / 4;
+      var col = lerpColor(ACENE_COOL, ACENE_HOT, t);
+      drawAceneChain(p.x, centerY, p.ringCount, {
+        stroke: rgb(col, 0.95), fill: rgb(col, 0.14), dopeRing:-1, zigzag:false
+      });
+    } else if (p.type === 'bn'){
+      drawAceneChain(p.x, centerY, p.ringCount, {
+        stroke: 'rgba(255,210,61,0.95)', fill: 'rgba(255,210,61,0.14)',
+        dopeRing: p.dopeRing, dopeColors:[BORON,NITROGEN], dopeLabels:['B','N'],
+        glow: '#ffd23d', zigzag:false
+      });
+    } else if (p.type === 'bb'){
+      drawAceneChain(p.x, centerY, p.ringCount, {
+        stroke: 'rgba(255,92,114,0.95)', fill: 'rgba(255,92,114,0.14)',
+        dopeRing: p.dopeRing, dopeColors:[BORON,BORON], dopeLabels:['B','B'],
+        zigzag:false
+      });
+    } else if (p.type === 'helicene'){
+      drawAceneChain(p.x, centerY, p.ringCount, {
+        stroke: 'rgba(185,139,255,0.95)', fill: 'rgba(185,139,255,0.14)', dopeRing:-1, zigzag:true
+      });
+    }
+    ctx.restore();
+  }
+
+  function drawPlayer(){
+    var x = player.x, y = player.y, w = player.w, h = player.h;
+    ctx.save();
+    ctx.translate(x + w/2, y + h/2);
+    ctx.scale(player.facing, 1);
+    ctx.translate(-w/2, -h/2);
+    ctx.fillStyle = '#c6ff3d';
+    ctx.beginPath();
+    ctx.ellipse(w/2, h*0.55, w/2, h*0.44, 0, 0, Math.PI*2);
+    ctx.fill();
+    ctx.fillStyle = '#05061a';
+    ctx.beginPath(); ctx.arc(w*0.35, h*0.48, 4.2, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(w*0.68, h*0.48, 4.2, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(w*0.37, h*0.44, 1.4, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(w*0.70, h*0.44, 1.4, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = '#8fcc1a';
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = 'round';
+    var bounce = Math.sin(altitudeM*0.05) * (player.vy < 0 ? 3 : 1);
+    ctx.beginPath(); ctx.moveTo(w*0.1, h*0.75); ctx.quadraticCurveTo(-2, h*0.9+bounce, -4, h*0.78); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(w*0.9, h*0.75); ctx.quadraticCurveTo(w+2, h*0.9+bounce, w+4, h*0.78); ctx.stroke();
+    ctx.restore();
+  }
+
+  function update(dt){
+    var accel = 0;
+    if (keys.left || touchDir < 0) accel -= MOVE_ACCEL;
+    if (keys.right || touchDir > 0) accel += MOVE_ACCEL;
+    player.vx += accel * dt;
+    player.vx *= Math.pow(FRICTION, dt);
+    player.vx = Math.max(-MOVE_MAX, Math.min(MOVE_MAX, player.vx));
+    if (Math.abs(player.vx) > 0.15) player.facing = player.vx > 0 ? 1 : -1;
+
+    player.x += player.vx * dt;
+    if (player.x + player.w < 0) player.x = W;
+    if (player.x > W) player.x = -player.w;
+
+    player.vy += GRAVITY * dt;
+    player.y += player.vy * dt;
+
+    for (var i=0;i<platforms.length;i++){
+      var p = platforms[i];
+      if (p.type === 'helicene' && !p.broken){
+        p.x += p.dir * p.speed * dt;
+        if (p.x < 6) { p.x = 6; p.dir = 1; }
+        if (p.x + p.w > W-6) { p.x = W-6-p.w; p.dir = -1; }
+      }
+      if (p.type === 'bb' && p.broken){
+        p.fade -= 0.07*dt;
+      }
+    }
+
+    if (player.vy > 0){
+      for (var j=0;j<platforms.length;j++){
+        var pl = platforms[j];
+        if (pl.broken) continue;
+        var feetY = player.y + player.h;
+        var prevFeetY = feetY - player.vy*dt;
+        if (prevFeetY <= pl.y + 6 && feetY >= pl.y &&
+            player.x + player.w*0.7 > pl.x && player.x + player.w*0.3 < pl.x + pl.w){
+          if (pl.type === 'bb'){
+            pl.broken = true;
+            player.vy = JUMP_V * 0.9;
+          } else if (pl.type === 'bn'){
+            player.vy = SPRING_V;
+          } else {
+            player.vy = JUMP_V;
+          }
+          break;
+        }
+      }
+    }
+
+    var threshold = H*0.42;
+    if (player.y < threshold){
+      var dy = threshold - player.y;
+      player.y = threshold;
+      scrollY -= dy;
+      altitudeM = Math.max(altitudeM, Math.floor(-scrollY/8));
+      for (var k=0;k<platforms.length;k++) platforms[k].y += dy;
+    }
+
+    platforms = platforms.filter(function(p){ return p.y < H + 30 && p.fade > 0; });
+    var topY = platforms.reduce(function(m,p){ return Math.min(m,p.y); }, H);
+    while (topY > -40){
+      topY -= rand(60, 95);
+      platforms.push(makePlatform(topY));
+    }
+
+    hudAltitude.textContent = altitudeM + 'm';
+
+    if (player.y > H + 40){
+      endGame();
+    }
+  }
+
+  function endGame(){
+    state = 'over';
+    var isNew = altitudeM > highScore;
+    if (isNew){ highScore = altitudeM; saveBest(); }
+    finalScoreEl.textContent = altitudeM + 'm';
+    finalBestEl.textContent = highScore + 'm';
+    bestScoreBox.classList.toggle('new', isNew);
+    hudBest.textContent = highScore + 'm';
+    overScreen.hidden = false;
+  }
+
+  function frame(ts){
+    if (!lastTs) lastTs = ts;
+    var dt = Math.min(2.2, (ts - lastTs) / 16.67);
+    lastTs = ts;
+
+    if (state === 'playing') update(dt);
+
+    drawBackground();
+    for (var i=0;i<platforms.length;i++) drawPlatform(platforms[i]);
+    if (state !== 'over') drawPlayer();
+
+    requestAnimationFrame(frame);
+  }
+
+  function startGame(){
+    resetGame();
+    state = 'playing';
+    startScreen.hidden = true;
+    overScreen.hidden = true;
+    lastTs = 0;
+  }
+
+  startBtn.addEventListener('click', startGame);
+  retryBtn.addEventListener('click', startGame);
+
+  window.addEventListener('keydown', function(e){
+    if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = true;
+    if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = true;
+    if (e.code === 'Space' && state !== 'playing') startGame();
+  });
+  window.addEventListener('keyup', function(e){
+    if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = false;
+    if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = false;
+  });
+
+  function setTouch(clientX){
+    var rect = canvas.getBoundingClientRect();
+    var localX = clientX - rect.left;
+    touchDir = localX < rect.width/2 ? -1 : 1;
+  }
+  canvas.addEventListener('pointerdown', function(e){ setTouch(e.clientX); });
+  canvas.addEventListener('pointermove', function(e){ if (e.pressure > 0 || e.buttons > 0) setTouch(e.clientX); });
+  window.addEventListener('pointerup', function(){ touchDir = 0; });
+  canvas.addEventListener('pointercancel', function(){ touchDir = 0; });
+
+  document.addEventListener('visibilitychange', function(){ lastTs = 0; });
+
+  function boot(data){
+    loadBest(data);
+    requestAnimationFrame(frame);
+  }
+
+  if (window.claude && window.claude.hot && window.claude.hot.snapshot){
+    window.claude.hot.snapshot(function(){ return { highScore: highScore }; });
+  }
+  if (window.claude && window.claude.hot && window.claude.hot.ready){
+    window.claude.hot.ready(boot);
+  } else {
+    boot((window.claude && window.claude.hot && window.claude.hot.data) || {});
+  }
+})();
+</script>
