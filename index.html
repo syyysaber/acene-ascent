@@ -168,7 +168,7 @@
   var keys = { left:false, right:false };
   var touchDir = 0;
 
-  var player, platforms, scrollY, altitudeM, stars, lastTs;
+  var player = null, platforms = [], scrollY = 0, altitudeM = 0, stars = [], lastTs = 0;
 
   function rand(a,b){ return a + Math.random()*(b-a); }
   function lerpColor(a,b,t){ return [a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, a[2]+(b[2]-a[2])*t]; }
@@ -477,7 +477,7 @@
 
     drawBackground();
     for (var i=0;i<platforms.length;i++) drawPlatform(platforms[i]);
-    if (state !== 'over') drawPlayer();
+    if (player && state !== 'over') drawPlayer();
 
     requestAnimationFrame(frame);
   }
