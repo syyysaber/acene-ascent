@@ -54,6 +54,23 @@
   #hud .best{ text-align:right; color:var(--cloud-dim); }
   #hud .best b{ color:var(--gold); }
 
+  .touch-controls{
+    position:absolute; left:0; right:0; bottom:0;
+    display:flex; justify-content:space-between;
+    padding:0 18px calc(18px + env(safe-area-inset-bottom, 0px));
+    pointer-events:none; z-index:6;
+  }
+  .touch-btn{
+    pointer-events:auto;
+    width:62px; height:62px; border-radius:50%; padding:0;
+    background:rgba(142,203,255,0.12); border:1.5px solid rgba(142,203,255,0.4);
+    color:var(--electron);
+    display:flex; align-items:center; justify-content:center;
+    -webkit-user-select:none; user-select:none; touch-action:none;
+  }
+  .touch-btn svg{ display:block; pointer-events:none; }
+  .touch-btn:active{ background:rgba(142,203,255,0.3); }
+
   .overlay{
     position:absolute; inset:0;
     display:flex; flex-direction:column; align-items:center; justify-content:center;
@@ -105,6 +122,8 @@
   .sw-bn{ background:var(--gold); }
   .sw-bb{ background:var(--danger); }
   .sw-heli{ background:var(--helicene); }
+  .sw-ss{ background:#2dd4a7; }
+  .sw-bbss{ background:linear-gradient(90deg,var(--danger),#2dd4a7); }
   .sw-boost{ background:radial-gradient(circle,#fff6c9,var(--gold)); }
   .sw-hazard{ background:radial-gradient(circle,var(--danger),#3a0512); }
   .footnote{ font-size:9px; color:#6d68a0; max-width:290px; line-height:1.5; font-style:italic; }
@@ -127,6 +146,15 @@
     <div class="stat best">BEST<b id="bestScore">0 Å</b></div>
   </div>
 
+  <div id="touchControls" class="touch-controls">
+    <button id="btnLeft" class="touch-btn" aria-label="Steer left">
+      <svg viewBox="0 0 24 24" width="26" height="26"><path d="M15 4 L7 12 L15 20" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <button id="btnRight" class="touch-btn" aria-label="Steer right">
+      <svg viewBox="0 0 24 24" width="26" height="26"><path d="M9 4 L17 12 L9 20" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+  </div>
+
   <div id="start" class="overlay">
     <svg class="electron-preview" viewBox="0 0 64 64" fill="none">
       <ellipse cx="32" cy="32" rx="27" ry="11" stroke="var(--helicene)" stroke-opacity="0.5" stroke-width="1.6" fill="none" transform="rotate(-18 32 32)"/>
@@ -140,13 +168,15 @@
     <ul class="legend">
       <li><span class="swatch sw-acene"></span><span><b>Acene</b> — pentacene → naphthalene, rings shrink as you climb</span></li>
       <li><span class="swatch sw-bn"></span><span><b>B–N acene</b> — isoelectronic swap, jolts you sky-high</span></li>
-      <li><span class="swatch sw-bb"></span><span><b>B–B acene</b> — electron-poor and unstable, crumbles in one step</span></li>
+      <li><span class="swatch sw-bb"></span><span><b>B–B acene</b> — naphthalene to a folded diboraheptacene, crumbles in one step</span></li>
       <li><span class="swatch sw-heli"></span><span><b>Helicene</b> — angularly fused and twisted, drifts sideways</span></li>
+      <li><span class="swatch sw-ss"></span><span><b>S,S-anthracene</b> — stable, doesn't break; its hidden fold just angles the launch</span></li>
+      <li><span class="swatch sw-bbss"></span><span><b>B,B + S,S pentacene</b> — both traits at once: crumbles AND angles the launch</span></li>
       <li><span class="swatch sw-boost"></span><span><b>hν photon</b> — rare pickup, excites you into a sustained climb</span></li>
       <li><span class="swatch sw-hazard"></span><span><b>Carbocation</b> — rare and electron-hungry, pulls you in and quenches your run</span></li>
     </ul>
     <button id="startBtn" class="btn">EXCITE ↑</button>
-    <p class="hint">Drag / touch left &amp; right of your electron to steer,<br/>or use <b>← →</b> / <b>A D</b> on a keyboard.</p>
+    <p class="hint">Hold the on-screen <b>← →</b> buttons to steer,<br/>or use <b>← →</b> / <b>A D</b> on a keyboard.</p>
     <p class="footnote">B–B motif inspired by recent diboraacene chemistry — protecting groups omitted for gameplay.</p>
   </div>
 
@@ -174,6 +204,8 @@
   var canvas = document.getElementById('game');
   var ctx = canvas.getContext('2d');
   var W = canvas.width, H = canvas.height;
+  var btnLeft = document.getElementById('btnLeft');
+  var btnRight = document.getElementById('btnRight');
 
   var hudAltitude = document.getElementById('altitude');
   var hudBest = document.getElementById('bestScore');
@@ -195,6 +227,8 @@
   var GRAVITY = 0.32;
   var JUMP_V = -11.2;
   var BN_JOLT_V = -19;
+  var FOLD_KICK_DEG = 40;   // the C-S-S-C / meso-B...B fold's own bend angle
+  var FOLD_KICK_MAG = 12;
   var MOVE_ACCEL = 0.9;
   var MOVE_MAX = 4.6;
   var FRICTION = 0.90;
@@ -206,13 +240,13 @@
 
   var BORON = '#ffb38a';
   var NITROGEN = '#5aa9ff';
+  var SULFUR = '#f5e642';
   var ACENE_COOL = [61,224,255];
   var ACENE_HOT = [255,107,53];
 
   var highScore = 0;
   var state = 'start';
   var keys = { left:false, right:false };
-  var touchDir = 0;
 
   var player = null, platforms = [], boosts = [], hazards = [], scrollY = 0, altitudeM = 0, stars = [], lastTs = 0;
 
@@ -234,6 +268,11 @@
 
   function difficultyAt(m){ return Math.min(1, m / 3500); }
 
+  var BB_RING_CHOICES = [2, 3, 5, 7];   // naphthalene .. heptacene
+  var BN_RING_CHOICES = [2, 3, 4, 5];   // naphthalene .. pentacene
+
+  function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+
   function makePlatform(y){
     var diff = difficultyAt(altitudeM);
     var roll = Math.random();
@@ -241,9 +280,57 @@
     var bbP = 0.09 + diff*0.10;
     var bnP = bbP + 0.08 + diff*0.05;
     var heliP = bnP + 0.20 + diff*0.15;
-    if (roll < bbP){ type = 'bb'; ringCount = 2; }
-    else if (roll < bnP){ type = 'bn'; ringCount = 2; }
+    var ssP = heliP + 0.10 + diff*0.05;
+    var bbssP = ssP + 0.06 + diff*0.04;
+
+    if (roll < bbP){
+      ringCount = pick(BB_RING_CHOICES);
+      var w1 = ringWidth(ringCount);
+      if (ringCount === 2){
+        // No true meso ring at n=2 (that's the "diboranaphthalene" family):
+        // a simple terminal C=C swap, same shape as the B-N platforms.
+        return {
+          x: rand(10, W - w1 - 10), y: y, w: w1, ringCount: ringCount, type: 'bb',
+          mode: 'terminal', dopeRing: Math.random() < 0.5 ? 0 : 1,
+          dir: 1, broken: false, fade: 1
+        };
+      }
+      // n=3,5,7: the real 6,13-dihydro-6,13-diboraacene family - both
+      // borons sit on the central ring's meso positions. Boron is what
+      // makes it crumble; a plain B,B ring (no sulfur) still breaks
+      // straight up, same as the simple terminal case.
+      return {
+        x: rand(10, W - w1 - 10), y: y, w: w1, ringCount: ringCount, type: 'bb',
+        mode: 'meso', dopeRing: (ringCount-1)/2,
+        dir: 1, broken: false, fade: 1
+      };
+    }
+    else if (roll < bnP){ type = 'bn'; ringCount = pick(BN_RING_CHOICES); }
     else if (roll < heliP){ type = 'helicene'; ringCount = 3; }
+    else if (roll < ssP){
+      // Anthracene with its 9,10 (meso) CH's swapped for sulfur: a real,
+      // thianthrene-like motif where the central ring stops being aromatic
+      // and the whole frame folds along the S...S axis. Sulfur is a stable,
+      // closed-shell substituent though - this doesn't crumble, it's a
+      // permanent platform that just angles the launch off to one side.
+      var w2 = ringWidth(3);
+      return {
+        x: rand(10, W - w2 - 10), y: y, w: w2, ringCount: 3, type: 'ss',
+        bendDir: Math.random() < 0.5 ? 1 : -1,
+        dir: 1, broken: false, fade: 1
+      };
+    }
+    else if (roll < bbssP){
+      // A pentacene doped at two separate internal rings - boron at one,
+      // sulfur at the other - combining both traits: it crumbles AND
+      // kicks the launch off at an angle.
+      var w3 = ringWidth(5);
+      return {
+        x: rand(10, W - w3 - 10), y: y, w: w3, ringCount: 5, type: 'bbss',
+        bendDir: Math.random() < 0.5 ? 1 : -1,
+        dir: 1, broken: false, fade: 1
+      };
+    }
     else { type = 'acene'; ringCount = ringCountForDifficulty(diff); }
 
     var w = ringWidth(ringCount);
@@ -252,7 +339,10 @@
       y: y,
       w: w,
       ringCount: ringCount,
-      dopeRing: (type==='bn'||type==='bb') ? Math.floor(Math.random()*ringCount) : -1,
+      // B-N only ever substitutes a genuine terminal ring - a middle ring
+      // in a chain of 3+ has both its flanking bonds tied up in fusions to
+      // its neighbours, leaving no free adjacent C=C to swap out.
+      dopeRing: (type==='bn') ? (Math.random() < 0.5 ? 0 : ringCount-1) : -1,
       type: type,
       dir: Math.random() < 0.5 ? -1 : 1,
       speed: rand(0.8, 1.6 + diff*1.2),
@@ -371,6 +461,33 @@
   // bond to be double and reshuffles ring2's own pattern accordingly.
   var BENT_DOUBLE_SETS = [ [[0,1],[2,3],[4,5]], [[0,1],[4,5]], [[1,2],[3,4],[5,0]] ];
 
+  // A chain with one or more non-benzenoid rings (9,10-dithia-anthracene;
+  // 6,13-dihydro-6,13-diboraacenes; a pentacene doped at two separate
+  // rings): every ring between two "cuts" is just its own ordinary,
+  // self-contained acene segment (still straightDoubleSets, unmodified -
+  // a lone ring always fully satisfies its own six atoms regardless of
+  // what its neighbours are up to), and each non-aromatic ring itself,
+  // having no aromaticity of its own, contributes no double bonds at all.
+  function segmentedDoubleSets(n, nonAromaticIndices){
+    var sets = new Array(n);
+    var isNA = {};
+    for (var j=0;j<nonAromaticIndices.length;j++) isNA[nonAromaticIndices[j]] = true;
+    var segStart = null;
+    for (var i=0;i<=n;i++){
+      if (i<n && !isNA[i]){
+        if (segStart===null) segStart = i;
+      } else {
+        if (segStart!==null){
+          var segSets = straightDoubleSets(i - segStart);
+          for (var k=0;k<segSets.length;k++) sets[segStart+k] = segSets[k];
+          segStart = null;
+        }
+        if (i<n) sets[i] = [];
+      }
+    }
+    return sets;
+  }
+
   function computeCenters(leftX, centerY, ringCount, directions){
     var centers = [[leftX + HEX_R*0.866, centerY]];
     for (var i=0;i<ringCount-1;i++){
@@ -398,10 +515,18 @@
     ctx.stroke();
   }
 
+  // Only ever substitute a genuine peripheral position, never a ring-fusion
+  // (bridgehead) carbon shared with the neighbouring ring: a terminal
+  // ring's free adjacent pair sits on whichever side has no neighbour.
+  function terminalDopeIdxs(ringIdx, ringCount){
+    return (ringIdx === 0 && ringCount > 1) ? [2,3] : [0,1];
+  }
+
   function drawAceneChain(leftX, centerY, ringCount, opt){
     var directions = opt.bend || null;
-    var doubleSets = opt.bend ? BENT_DOUBLE_SETS : straightDoubleSets(ringCount);
+    var doubleSets = opt.doubleSets || (opt.bend ? BENT_DOUBLE_SETS : straightDoubleSets(ringCount));
     var centers = computeCenters(leftX, centerY, ringCount, directions);
+    var dopes = opt.dopes || [];
 
     for (var i=0;i<ringCount;i++){
       var cx = centers[i][0], cy = centers[i][1];
@@ -426,13 +551,12 @@
       for (var e=0;e<edges.length;e++) drawDoubleBond(pts, cx, cy, edges[e][0], edges[e][1]);
       ctx.restore();
 
-      if (opt.dopeRing === i){
-        // Only ever substitute a genuine peripheral C=C, never a ring-fusion
-        // (bridgehead) carbon shared with the neighbouring ring.
-        var idxs = (i === 0 && ringCount > 1) ? [2,3] : [0,1];
+      for (var dd=0; dd<dopes.length; dd++){
+        if (dopes[dd].ring !== i) continue;
+        var idxs = dopes[dd].idxs;
         for (var d=0; d<idxs.length; d++){
           var p = pts[idxs[d]];
-          var color = opt.dopeColors[d];
+          var color = dopes[dd].colors[d];
           var r = Math.max(4, HEX_R*0.4);
           ctx.beginPath();
           ctx.arc(p[0], p[1], r, 0, Math.PI*2);
@@ -446,7 +570,7 @@
             ctx.font = 'bold ' + Math.round(HEX_R*0.85) + 'px Rubik, sans-serif';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText(opt.dopeLabels[d], p[0], p[1]+0.5);
+            ctx.fillText(dopes[dd].labels[d], p[0], p[1]+0.5);
           }
         }
       }
@@ -462,22 +586,50 @@
       var t = (p.ringCount - 2) / 3;
       var col = lerpColor(ACENE_COOL, ACENE_HOT, t);
       drawAceneChain(p.x, centerY, p.ringCount, {
-        stroke: rgb(col, 0.95), fill: rgb(col, 0.14), dopeRing:-1
+        stroke: rgb(col, 0.95), fill: rgb(col, 0.14)
       });
     } else if (p.type === 'bn'){
       drawAceneChain(p.x, centerY, p.ringCount, {
         stroke: 'rgba(255,210,61,0.95)', fill: 'rgba(255,210,61,0.14)',
-        dopeRing: p.dopeRing, dopeColors:[BORON,NITROGEN], dopeLabels:['B','N'],
+        dopes: [{ ring:p.dopeRing, idxs:terminalDopeIdxs(p.dopeRing,p.ringCount), colors:[BORON,NITROGEN], labels:['B','N'] }],
         glow: '#ffd23d'
       });
     } else if (p.type === 'bb'){
-      drawAceneChain(p.x, centerY, p.ringCount, {
-        stroke: 'rgba(255,92,114,0.95)', fill: 'rgba(255,92,114,0.14)',
-        dopeRing: p.dopeRing, dopeColors:[BORON,BORON], dopeLabels:['B','B']
-      });
+      if (p.mode === 'meso'){
+        drawAceneChain(p.x, centerY, p.ringCount, {
+          stroke: 'rgba(255,92,114,0.95)', fill: 'rgba(255,92,114,0.14)',
+          dopes: [{ ring:p.dopeRing, idxs:[1,4], colors:[BORON,BORON], labels:['B','B'] }],
+          doubleSets: segmentedDoubleSets(p.ringCount, [p.dopeRing])
+        });
+      } else {
+        drawAceneChain(p.x, centerY, p.ringCount, {
+          stroke: 'rgba(255,92,114,0.95)', fill: 'rgba(255,92,114,0.14)',
+          dopes: [{ ring:p.dopeRing, idxs:terminalDopeIdxs(p.dopeRing,p.ringCount), colors:[BORON,BORON], labels:['B','B'] }]
+        });
+      }
     } else if (p.type === 'helicene'){
       drawAceneChain(p.x, centerY, p.ringCount, {
-        stroke: 'rgba(185,139,255,0.95)', fill: 'rgba(185,139,255,0.14)', dopeRing:-1, bend:[0,60]
+        stroke: 'rgba(185,139,255,0.95)', fill: 'rgba(185,139,255,0.14)', bend:[0,60]
+      });
+    } else if (p.type === 'ss'){
+      // Drawn as a perfectly ordinary anthracene skeleton - the S,S fold
+      // isn't shown in the geometry, only in the angled kick when it lands.
+      drawAceneChain(p.x, centerY, p.ringCount, {
+        stroke: 'rgba(45,212,167,0.95)', fill: 'rgba(45,212,167,0.14)',
+        dopes: [{ ring:1, idxs:[1,4], colors:[SULFUR,SULFUR], labels:['S','S'] }],
+        doubleSets: segmentedDoubleSets(3, [1])
+      });
+    } else if (p.type === 'bbss'){
+      // A pentacene doped at two separate internal rings: the B,B ring
+      // brings the instability (crumbles), the S,S ring brings the fold
+      // (angles the kick) - together in one platform.
+      drawAceneChain(p.x, centerY, p.ringCount, {
+        stroke: 'rgba(230,150,120,0.95)', fill: 'rgba(230,150,120,0.14)',
+        dopes: [
+          { ring:1, idxs:[1,4], colors:[BORON,BORON], labels:['B','B'] },
+          { ring:3, idxs:[1,4], colors:[SULFUR,SULFUR], labels:['S','S'] }
+        ],
+        doubleSets: segmentedDoubleSets(5, [1,3])
       });
     }
     ctx.restore();
@@ -589,8 +741,8 @@
 
   function update(dt){
     var accel = 0;
-    if (keys.left || touchDir < 0) accel -= MOVE_ACCEL;
-    if (keys.right || touchDir > 0) accel += MOVE_ACCEL;
+    if (keys.left) accel -= MOVE_ACCEL;
+    if (keys.right) accel += MOVE_ACCEL;
     player.vx += accel * dt;
 
     if (player.invincibleT > 0) player.invincibleT -= dt/60;
@@ -640,7 +792,7 @@
         if (p.x < 6) { p.x = 6; p.dir = 1; }
         if (p.x + p.w > W-6) { p.x = W-6-p.w; p.dir = -1; }
       }
-      if (p.type === 'bb' && p.broken){
+      if ((p.type === 'bb' || p.type === 'bbss') && p.broken){
         p.fade -= 0.07*dt;
       }
     }
@@ -654,11 +806,26 @@
         if (prevFeetY <= pl.y + 6 && feetY >= pl.y &&
             player.x + player.w*0.7 > pl.x && player.x + player.w*0.3 < pl.x + pl.w){
           if (pl.type === 'bb'){
+            // Boron is what makes it unstable - always a plain crumble,
+            // meso or terminal, with or without sulfur elsewhere.
             pl.broken = true;
             player.vy = JUMP_V * 0.9;
           } else if (pl.type === 'bn'){
             player.vy = BN_JOLT_V;
             player.invincibleT = BN_INVINCIBLE_DURATION;
+          } else if (pl.type === 'ss'){
+            // Sulfur is a stable, closed-shell substituent - this platform
+            // survives the landing, it just redirects it at an angle.
+            var foldRad = pl.bendDir * FOLD_KICK_DEG * Math.PI/180;
+            player.vx = FOLD_KICK_MAG * Math.sin(foldRad);
+            player.vy = -FOLD_KICK_MAG * Math.cos(foldRad);
+          } else if (pl.type === 'bbss'){
+            // Both traits at once: the B,B ring crumbles it, the S,S ring
+            // angles the kick.
+            pl.broken = true;
+            var foldRad2 = pl.bendDir * FOLD_KICK_DEG * Math.PI/180;
+            player.vx = FOLD_KICK_MAG * Math.sin(foldRad2);
+            player.vy = -FOLD_KICK_MAG * Math.cos(foldRad2);
           } else {
             player.vy = JUMP_V;
           }
@@ -804,15 +971,15 @@
     if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = false;
   });
 
-  function setTouch(clientX){
-    var rect = canvas.getBoundingClientRect();
-    var localX = clientX - rect.left;
-    touchDir = localX < rect.width/2 ? -1 : 1;
+  function bindHold(btn, onDown, onUp){
+    btn.addEventListener('pointerdown', function(e){ e.preventDefault(); onDown(); });
+    btn.addEventListener('pointerup', onUp);
+    btn.addEventListener('pointercancel', onUp);
+    btn.addEventListener('pointerleave', onUp);
+    btn.addEventListener('contextmenu', function(e){ e.preventDefault(); });
   }
-  canvas.addEventListener('pointerdown', function(e){ setTouch(e.clientX); });
-  canvas.addEventListener('pointermove', function(e){ if (e.pressure > 0 || e.buttons > 0) setTouch(e.clientX); });
-  window.addEventListener('pointerup', function(){ touchDir = 0; });
-  canvas.addEventListener('pointercancel', function(){ touchDir = 0; });
+  bindHold(btnLeft, function(){ keys.left = true; }, function(){ keys.left = false; });
+  bindHold(btnRight, function(){ keys.right = true; }, function(){ keys.right = false; });
 
   document.addEventListener('visibilitychange', function(){ lastTs = 0; });
 
