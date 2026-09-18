@@ -39,7 +39,7 @@
     max-width:100%;
     border-radius:14px;
     overflow:hidden;
-    box-shadow:0 0 0 1px rgba(198,255,61,0.12), 0 30px 80px rgba(0,0,0,0.6);
+    box-shadow:0 0 0 1px rgba(142,203,255,0.16), 0 30px 80px rgba(0,0,0,0.6);
     background:var(--space-deep);
   }
   canvas{ display:block; width:100%; height:100%; }
@@ -136,28 +136,28 @@
       <line x1="26" y1="32" x2="38" y2="32" stroke="#141225" stroke-width="3" stroke-linecap="round"/>
     </svg>
     <div class="title pixel">ACENE<br/>ASCENT</div>
-    <p class="tagline">A stray π-electron fell out of conjugation. Hop up a ladder of aromatic rings back to the top before the whole system falls apart.</p>
+    <p class="tagline">A stray π-electron fell out of conjugation. Excite it back up a shrinking ladder of aromatic rings before the whole system falls apart.</p>
     <ul class="legend">
       <li><span class="swatch sw-acene"></span><span><b>Acene</b> — pentacene → naphthalene, rings shrink as you climb</span></li>
-      <li><span class="swatch sw-bn"></span><span><b>B–N acene</b> — isoelectronic swap, launches you sky-high</span></li>
+      <li><span class="swatch sw-bn"></span><span><b>B–N acene</b> — isoelectronic swap, jolts you sky-high</span></li>
       <li><span class="swatch sw-bb"></span><span><b>B–B acene</b> — electron-poor and unstable, crumbles in one step</span></li>
       <li><span class="swatch sw-heli"></span><span><b>Helicene</b> — angularly fused and twisted, drifts sideways</span></li>
       <li><span class="swatch sw-boost"></span><span><b>hν photon</b> — rare pickup, excites you into a sustained climb</span></li>
       <li><span class="swatch sw-hazard"></span><span><b>Carbocation</b> — rare and electron-hungry, pulls you in and quenches your run</span></li>
     </ul>
-    <button id="startBtn" class="btn">LAUNCH ↑</button>
+    <button id="startBtn" class="btn">EXCITE ↑</button>
     <p class="hint">Drag / touch left &amp; right of your electron to steer,<br/>or use <b>← →</b> / <b>A D</b> on a keyboard.</p>
     <p class="footnote">B–B motif inspired by recent diboraacene chemistry — protecting groups omitted for gameplay.</p>
   </div>
 
   <div id="gameover" class="overlay" hidden>
-    <div class="title pixel" id="overTitle" style="font-size:20px;">SIGNAL<br/>LOST</div>
+    <div class="title pixel" id="overTitle" style="font-size:20px;">GROUND<br/>STATE</div>
     <div class="score-row">
       <div class="score-box" id="finalScoreBox"><span>ALTITUDE</span><b id="finalScore">0 Å</b></div>
       <div class="score-box" id="bestScoreBox"><span>BEST</span><b id="finalBest">0 Å</b></div>
     </div>
     <div class="btn-row">
-      <button id="retryBtn" class="btn">RE-LAUNCH ↑</button>
+      <button id="retryBtn" class="btn">RE-EXCITE ↑</button>
     </div>
     <div class="btn-row">
       <button id="shareNativeBtn" class="btn btn-ghost" hidden>SHARE ↗</button>
@@ -194,7 +194,7 @@
 
   var GRAVITY = 0.32;
   var JUMP_V = -11.2;
-  var SPRING_V = -19;
+  var BN_JOLT_V = -19;
   var MOVE_ACCEL = 0.9;
   var MOVE_MAX = 4.6;
   var FRICTION = 0.90;
@@ -646,7 +646,7 @@
             pl.broken = true;
             player.vy = JUMP_V * 0.9;
           } else if (pl.type === 'bn'){
-            player.vy = SPRING_V;
+            player.vy = BN_JOLT_V;
           } else {
             player.vy = JUMP_V;
           }
@@ -698,7 +698,7 @@
     state = 'over';
     var isNew = altitudeM > highScore;
     if (isNew){ highScore = altitudeM; saveBest(); }
-    overTitle.innerHTML = reason === 'quenched' ? 'QUENCHED' : 'SIGNAL<br/>LOST';
+    overTitle.innerHTML = reason === 'quenched' ? 'QUENCHED' : 'GROUND<br/>STATE';
     finalScoreEl.textContent = altitudeM + ' Å';
     finalBestEl.textContent = highScore + ' Å';
     bestScoreBox.classList.toggle('new', isNew);
