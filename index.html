@@ -1,3 +1,8 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Acene Ascent</title>
 <style>
   :root{
@@ -9,8 +14,8 @@
     --gold:#ffd23d;
     --danger:#ff5c72;
     --helicene:#b98bff;
-    --alien:#c6ff3d;
-    --alien-dark:#8fcc1a;
+    --electron:#8ecbff;
+    --electron-dark:#3f7fc4;
   }
   html,body{height:100%;}
   body{
@@ -45,7 +50,7 @@
     padding:14px 16px; pointer-events:none; z-index:5;
   }
   #hud .stat{ font-size:11px; line-height:1.6; color:var(--cloud); text-shadow:0 2px 0 rgba(0,0,0,0.5); }
-  #hud .stat b{ display:block; color:var(--alien); font-size:15px; }
+  #hud .stat b{ display:block; color:var(--electron); font-size:15px; }
   #hud .best{ text-align:right; color:var(--cloud-dim); }
   #hud .best b{ color:var(--gold); }
 
@@ -57,15 +62,15 @@
     z-index:10; overflow-y:auto;
   }
   .overlay[hidden]{ display:none; }
-  .title{ font-size:24px; line-height:1.5; color:var(--alien); text-shadow:3px 3px 0 var(--helicene); letter-spacing:1px; }
+  .title{ font-size:24px; line-height:1.5; color:var(--electron); text-shadow:3px 3px 0 var(--helicene); letter-spacing:1px; }
   .tagline{ font-size:12.5px; color:var(--cloud-dim); max-width:290px; line-height:1.65; }
-  .alien-preview{ width:56px; height:56px; filter:drop-shadow(0 8px 14px rgba(198,255,61,0.35)); }
+  .electron-preview{ width:56px; height:56px; filter:drop-shadow(0 8px 14px rgba(142,203,255,0.4)); }
   .btn{
     font-family:'Press Start 2P',monospace; font-size:12px; color:var(--space-black);
-    background:var(--alien); border:none; border-radius:8px; padding:14px 22px; cursor:pointer;
-    box-shadow:0 5px 0 var(--alien-dark); letter-spacing:0.5px; flex-shrink:0;
+    background:var(--electron); border:none; border-radius:8px; padding:14px 22px; cursor:pointer;
+    box-shadow:0 5px 0 var(--electron-dark); letter-spacing:0.5px; flex-shrink:0;
   }
-  .btn:active{ transform:translateY(3px); box-shadow:0 2px 0 var(--alien-dark); }
+  .btn:active{ transform:translateY(3px); box-shadow:0 2px 0 var(--electron-dark); }
   .btn-row{ display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
   .btn-ghost{
     background:transparent; color:var(--helicene);
@@ -73,6 +78,21 @@
     border:1.5px solid var(--helicene);
   }
   .btn-ghost:active{ transform:translateY(3px); box-shadow:0 2px 0 rgba(185,139,255,0.35); }
+  .btn-icon{
+    font-family:'Rubik',system-ui,sans-serif; font-weight:600; font-size:12px;
+    background:transparent; border-radius:8px; padding:9px 16px; cursor:pointer;
+  }
+  .btn-icon:active{ transform:translateY(3px); }
+  .btn-copy{ color:var(--helicene); border:1.5px solid var(--helicene); box-shadow:0 4px 0 rgba(185,139,255,0.3); }
+  .btn-copy:active{ box-shadow:0 1px 0 rgba(185,139,255,0.3); }
+  .btn-x{ color:var(--cloud); border:1.5px solid var(--cloud-dim); box-shadow:0 4px 0 rgba(169,164,214,0.25); }
+  .btn-x:active{ box-shadow:0 1px 0 rgba(169,164,214,0.25); }
+  .btn-line{ color:#06c755; border:1.5px solid #06c755; box-shadow:0 4px 0 rgba(6,199,85,0.3); }
+  .btn-line:active{ box-shadow:0 1px 0 rgba(6,199,85,0.3); }
+  .copy-toast{
+    font-size:10.5px; color:var(--electron); background:rgba(142,203,255,0.14);
+    border:1px solid rgba(142,203,255,0.4); padding:5px 12px; border-radius:999px;
+  }
   .hint{ font-size:10.5px; color:var(--cloud-dim); line-height:1.7; }
   .hint b{ color:var(--helicene); }
   .legend{ list-style:none; margin:2px 0; padding:10px 14px; display:flex; flex-direction:column; gap:7px;
@@ -85,6 +105,8 @@
   .sw-bn{ background:var(--gold); }
   .sw-bb{ background:var(--danger); }
   .sw-heli{ background:var(--helicene); }
+  .sw-boost{ background:radial-gradient(circle,#fff6c9,var(--gold)); }
+  .sw-hazard{ background:radial-gradient(circle,var(--danger),#3a0512); }
   .footnote{ font-size:9px; color:#6d68a0; max-width:290px; line-height:1.5; font-style:italic; }
   .score-row{ display:flex; gap:26px; justify-content:center; }
   .score-box{ display:flex; flex-direction:column; gap:6px; }
@@ -95,24 +117,23 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Rubik:wght@400;600&display=swap" rel="stylesheet">
-
+</head>
+<body>
 <div id="stage">
   <canvas id="game" width="400" height="680" aria-label="Acene Ascent game canvas"></canvas>
 
   <div id="hud">
-    <div class="stat">ALTITUDE<b id="altitude">0m</b></div>
-    <div class="stat best">BEST<b id="bestScore">0m</b></div>
+    <div class="stat">ALTITUDE<b id="altitude">0 Å</b></div>
+    <div class="stat best">BEST<b id="bestScore">0 Å</b></div>
   </div>
 
   <div id="start" class="overlay">
-    <svg class="alien-preview" viewBox="0 0 64 64" fill="none">
-      <ellipse cx="32" cy="40" rx="20" ry="18" fill="var(--alien)"/>
-      <circle cx="24" cy="34" r="7" fill="#05061a"/>
-      <circle cx="42" cy="34" r="7" fill="#05061a"/>
-      <circle cx="26" cy="32" r="2.4" fill="#fff"/>
-      <circle cx="44" cy="32" r="2.4" fill="#fff"/>
-      <path d="M14 46 Q10 54 6 50" stroke="var(--alien-dark)" stroke-width="3" fill="none" stroke-linecap="round"/>
-      <path d="M50 46 Q54 54 58 50" stroke="var(--alien-dark)" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <svg class="electron-preview" viewBox="0 0 64 64" fill="none">
+      <ellipse cx="32" cy="32" rx="27" ry="11" stroke="var(--helicene)" stroke-opacity="0.5" stroke-width="1.6" fill="none" transform="rotate(-18 32 32)"/>
+      <ellipse cx="32" cy="32" rx="27" ry="11" stroke="var(--electron)" stroke-opacity="0.35" stroke-width="1.6" fill="none" transform="rotate(35 32 32)"/>
+      <circle cx="32" cy="32" r="13" fill="var(--electron)"/>
+      <circle cx="32" cy="32" r="13" fill="none" stroke="var(--electron-dark)" stroke-width="2"/>
+      <line x1="26" y1="32" x2="38" y2="32" stroke="#141225" stroke-width="3" stroke-linecap="round"/>
     </svg>
     <div class="title pixel">ACENE<br/>ASCENT</div>
     <p class="tagline">A stray π-electron fell out of conjugation. Hop up a ladder of aromatic rings back to the top before the whole system falls apart.</p>
@@ -121,6 +142,8 @@
       <li><span class="swatch sw-bn"></span><span><b>B–N acene</b> — isoelectronic swap, launches you sky-high</span></li>
       <li><span class="swatch sw-bb"></span><span><b>B–B acene</b> — electron-poor and unstable, crumbles in one step</span></li>
       <li><span class="swatch sw-heli"></span><span><b>Helicene</b> — angularly fused and twisted, drifts sideways</span></li>
+      <li><span class="swatch sw-boost"></span><span><b>hν photon</b> — rare pickup, excites you into a sustained climb</span></li>
+      <li><span class="swatch sw-hazard"></span><span><b>Carbocation</b> — rare and electron-hungry, pulls you in and quenches your run</span></li>
     </ul>
     <button id="startBtn" class="btn">LAUNCH ↑</button>
     <p class="hint">Drag / touch left &amp; right of your electron to steer,<br/>or use <b>← →</b> / <b>A D</b> on a keyboard.</p>
@@ -128,15 +151,21 @@
   </div>
 
   <div id="gameover" class="overlay" hidden>
-    <div class="title pixel" style="font-size:20px;">SIGNAL<br/>LOST</div>
+    <div class="title pixel" id="overTitle" style="font-size:20px;">SIGNAL<br/>LOST</div>
     <div class="score-row">
-      <div class="score-box" id="finalScoreBox"><span>ALTITUDE</span><b id="finalScore">0m</b></div>
-      <div class="score-box" id="bestScoreBox"><span>BEST</span><b id="finalBest">0m</b></div>
+      <div class="score-box" id="finalScoreBox"><span>ALTITUDE</span><b id="finalScore">0 Å</b></div>
+      <div class="score-box" id="bestScoreBox"><span>BEST</span><b id="finalBest">0 Å</b></div>
     </div>
     <div class="btn-row">
       <button id="retryBtn" class="btn">RE-LAUNCH ↑</button>
-      <button id="shareBtn" class="btn btn-ghost">SHARE ↗</button>
     </div>
+    <div class="btn-row">
+      <button id="shareNativeBtn" class="btn btn-ghost" hidden>SHARE ↗</button>
+      <button id="copyBtn" class="btn-icon btn-copy">COPY LINK</button>
+      <button id="xBtn" class="btn-icon btn-x">X</button>
+      <button id="lineBtn" class="btn-icon btn-line">LINE</button>
+    </div>
+    <span id="copyToast" class="copy-toast" hidden>Copied!</span>
   </div>
 </div>
 
@@ -150,12 +179,17 @@
   var hudBest = document.getElementById('bestScore');
   var startScreen = document.getElementById('start');
   var overScreen = document.getElementById('gameover');
+  var overTitle = document.getElementById('overTitle');
   var finalScoreEl = document.getElementById('finalScore');
   var finalBestEl = document.getElementById('finalBest');
   var bestScoreBox = document.getElementById('bestScoreBox');
   var startBtn = document.getElementById('startBtn');
   var retryBtn = document.getElementById('retryBtn');
-  var shareBtn = document.getElementById('shareBtn');
+  var shareNativeBtn = document.getElementById('shareNativeBtn');
+  var copyBtn = document.getElementById('copyBtn');
+  var xBtn = document.getElementById('xBtn');
+  var lineBtn = document.getElementById('lineBtn');
+  var copyToast = document.getElementById('copyToast');
   var GAME_URL = 'https://syyysaber.github.io/acene-ascent/';
 
   var GRAVITY = 0.32;
@@ -180,7 +214,13 @@
   var keys = { left:false, right:false };
   var touchDir = 0;
 
-  var player = null, platforms = [], scrollY = 0, altitudeM = 0, stars = [], lastTs = 0;
+  var player = null, platforms = [], boosts = [], hazards = [], scrollY = 0, altitudeM = 0, stars = [], lastTs = 0;
+
+  var EXCITE_DURATION = 1.6;
+  var EXCITE_LIFT = -6.4;
+  var PULL_RADIUS = 78;
+  var CAPTURE_RADIUS = 15;
+  var PULL_ACCEL = 0.55;
 
   function rand(a,b){ return a + Math.random()*(b-a); }
   function lerpColor(a,b,t){ return [a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, a[2]+(b[2]-a[2])*t]; }
@@ -220,10 +260,36 @@
     };
   }
 
+  // Rare, world-floating pickup: an absorbed photon promotes the electron
+  // to an excited state, giving it sustained lift for a short time (the
+  // "jetpack" analogue). Kept scarce and gated behind an altitude floor
+  // so it never appears right at the start.
+  function maybeSpawnBoost(y){
+    if (boosts.length > 0) return;
+    if (altitudeM < 40) return;
+    if (Math.random() < 0.08) {
+      boosts.push({ x: rand(30, W-30), y: y - rand(10, 40), r: 11, phase: Math.random()*Math.PI*2 });
+    }
+  }
+
+  // Rare hazard: an electron-hungry carbocation exerts an attractive pull
+  // (the "black hole" analogue) and ends the run if it fully captures the
+  // player. Introduced later and scaled slightly with difficulty.
+  function maybeSpawnHazard(y){
+    if (hazards.length > 0) return;
+    if (altitudeM < 180) return;
+    var diff = difficultyAt(altitudeM);
+    if (Math.random() < 0.05 + diff*0.03) {
+      hazards.push({ x: rand(40, W-40), y: y - rand(10, 40), phase: Math.random()*Math.PI*2 });
+    }
+  }
+
   function resetGame(){
     var startW = ringWidth(2);
-    player = { x: W/2 - 16, y: H - 120, w:32, h:32, vx:0, vy:JUMP_V, facing:1 };
+    player = { x: W/2 - 16, y: H - 120, w:32, h:32, vx:0, vy:JUMP_V, excitedT:0 };
     platforms = [];
+    boosts = [];
+    hazards = [];
     scrollY = 0;
     altitudeM = 0;
 
@@ -244,7 +310,7 @@
       highScore = (data && typeof data.highScore === 'number') ? data.highScore
                 : parseInt(localStorage.getItem('aceneAscentBest') || '0', 10) || 0;
     } catch(e){ highScore = (data && data.highScore) || 0; }
-    hudBest.textContent = highScore + 'm';
+    hudBest.textContent = highScore + ' Å';
   }
   function saveBest(){ try { localStorage.setItem('aceneAscentBest', String(highScore)); } catch(e){} }
 
@@ -416,28 +482,106 @@
     ctx.restore();
   }
 
-  function drawPlayer(){
-    var x = player.x, y = player.y, w = player.w, h = player.h;
+  function drawBoost(b){
+    var bob = Math.sin(b.phase + altitudeM*0.03) * 4;
+    var bx = b.x, by = b.y + bob;
     ctx.save();
-    ctx.translate(x + w/2, y + h/2);
-    ctx.scale(player.facing, 1);
-    ctx.translate(-w/2, -h/2);
-    ctx.fillStyle = '#c6ff3d';
-    ctx.beginPath();
-    ctx.ellipse(w/2, h*0.55, w/2, h*0.44, 0, 0, Math.PI*2);
-    ctx.fill();
-    ctx.fillStyle = '#05061a';
-    ctx.beginPath(); ctx.arc(w*0.35, h*0.48, 4.2, 0, Math.PI*2); ctx.fill();
-    ctx.beginPath(); ctx.arc(w*0.68, h*0.48, 4.2, 0, Math.PI*2); ctx.fill();
-    ctx.fillStyle = '#fff';
-    ctx.beginPath(); ctx.arc(w*0.37, h*0.44, 1.4, 0, Math.PI*2); ctx.fill();
-    ctx.beginPath(); ctx.arc(w*0.70, h*0.44, 1.4, 0, Math.PI*2); ctx.fill();
-    ctx.strokeStyle = '#8fcc1a';
-    ctx.lineWidth = 2.5;
+    var grad = ctx.createRadialGradient(bx, by, 1, bx, by, b.r*2.4);
+    grad.addColorStop(0, 'rgba(255,246,201,0.9)');
+    grad.addColorStop(1, 'rgba(255,210,61,0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath(); ctx.arc(bx, by, b.r*2.4, 0, Math.PI*2); ctx.fill();
+
+    ctx.fillStyle = '#fff6c9';
+    ctx.beginPath(); ctx.arc(bx, by, b.r*0.55, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = '#ffd23d';
+    ctx.lineWidth = 1.4;
+    ctx.stroke();
+
+    ctx.fillStyle = '#ffd23d';
+    ctx.font = 'bold 11px Rubik, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('hν', bx, by - b.r - 6);
+    ctx.restore();
+  }
+
+  function drawHazard(hz){
+    var drift = Math.sin(hz.phase + altitudeM*0.025) * 5;
+    var hx = hz.x + drift, hy = hz.y;
+    ctx.save();
+    for (var ring=0; ring<3; ring++){
+      var rr = PULL_RADIUS * (0.35 + ring*0.28) - (altitudeM*0.6 + ring*40) % (PULL_RADIUS*0.9);
+      var rNorm = Math.max(0, Math.min(1, rr / PULL_RADIUS));
+      ctx.globalAlpha = 0.35 * rNorm;
+      ctx.strokeStyle = '#ff5c72';
+      ctx.lineWidth = 1.4;
+      ctx.beginPath(); ctx.arc(hx, hy, 14 + rNorm*PULL_RADIUS, 0, Math.PI*2); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+    var grad = ctx.createRadialGradient(hx, hy, 1, hx, hy, 16);
+    grad.addColorStop(0, '#3a0512');
+    grad.addColorStop(1, 'rgba(58,5,18,0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath(); ctx.arc(hx, hy, 16, 0, Math.PI*2); ctx.fill();
+
+    ctx.fillStyle = '#ff5c72';
+    ctx.beginPath(); ctx.arc(hx, hy, 8, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#1a0308';
+    ctx.font = 'bold 10px Rubik, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('+', hx, hy+0.5);
+    ctx.restore();
+  }
+
+  function drawPlayer(){
+    var cx = player.x + player.w/2, cy = player.y + player.h/2;
+    var R = player.w/2;
+    var excited = player.excitedT > 0;
+    var core = excited ? '#fff6c9' : '#eafcff';
+    var ring = excited ? '#ffd23d' : '#8ecbff';
+    var spin = altitudeM*0.03 + (player.x*0.01);
+
+    ctx.save();
+
+    // two crossed orbital rings, purely decorative
+    ctx.globalAlpha = excited ? 0.55 : 0.4;
+    ctx.lineWidth = 1.3;
+    ctx.strokeStyle = '#b98bff';
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(spin);
+    ctx.beginPath(); ctx.ellipse(0, 0, R*1.9, R*0.7, 0, 0, Math.PI*2); ctx.stroke();
+    ctx.restore();
+    ctx.strokeStyle = ring;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(-spin*1.3 + 1.1);
+    ctx.beginPath(); ctx.ellipse(0, 0, R*1.9, R*0.7, 0, 0, Math.PI*2); ctx.stroke();
+    ctx.restore();
+    ctx.globalAlpha = 1;
+
+    // soft glow halo
+    var grad = ctx.createRadialGradient(cx, cy, 1, cx, cy, R*1.6);
+    grad.addColorStop(0, ring);
+    grad.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.globalAlpha = 0.5;
+    ctx.fillStyle = grad;
+    ctx.beginPath(); ctx.arc(cx, cy, R*1.6, 0, Math.PI*2); ctx.fill();
+    ctx.globalAlpha = 1;
+
+    // electron core with its charge sign
+    ctx.fillStyle = core;
+    ctx.beginPath(); ctx.arc(cx, cy, R*0.66, 0, Math.PI*2); ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = ring;
+    ctx.stroke();
+    ctx.strokeStyle = '#141225';
+    ctx.lineWidth = 2.6;
     ctx.lineCap = 'round';
-    var bounce = Math.sin(altitudeM*0.05) * (player.vy < 0 ? 3 : 1);
-    ctx.beginPath(); ctx.moveTo(w*0.1, h*0.75); ctx.quadraticCurveTo(-2, h*0.9+bounce, -4, h*0.78); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(w*0.9, h*0.75); ctx.quadraticCurveTo(w+2, h*0.9+bounce, w+4, h*0.78); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx-R*0.32, cy); ctx.lineTo(cx+R*0.32, cy); ctx.stroke();
+
     ctx.restore();
   }
 
@@ -446,15 +590,36 @@
     if (keys.left || touchDir < 0) accel -= MOVE_ACCEL;
     if (keys.right || touchDir > 0) accel += MOVE_ACCEL;
     player.vx += accel * dt;
+
+    var pcx = player.x + player.w/2, pcy = player.y + player.h/2;
+    for (var hIdx=0; hIdx<hazards.length; hIdx++){
+      var hz = hazards[hIdx];
+      var dx = hz.x - pcx, dy = hz.y - pcy;
+      var dist = Math.hypot(dx, dy) || 1;
+      if (dist < PULL_RADIUS){
+        var strength = (1 - dist/PULL_RADIUS) * PULL_ACCEL;
+        player.vx += (dx/dist) * strength * dt;
+        player.vy += (dy/dist) * strength * dt;
+      }
+      if (dist < CAPTURE_RADIUS){
+        endGame('quenched');
+        return;
+      }
+    }
+
     player.vx *= Math.pow(FRICTION, dt);
     player.vx = Math.max(-MOVE_MAX, Math.min(MOVE_MAX, player.vx));
-    if (Math.abs(player.vx) > 0.15) player.facing = player.vx > 0 ? 1 : -1;
 
     player.x += player.vx * dt;
     if (player.x + player.w < 0) player.x = W;
     if (player.x > W) player.x = -player.w;
 
-    player.vy += GRAVITY * dt;
+    if (player.excitedT > 0){
+      player.excitedT -= dt/60;
+      player.vy = EXCITE_LIFT;
+    } else {
+      player.vy += GRAVITY * dt;
+    }
     player.y += player.vy * dt;
 
     for (var i=0;i<platforms.length;i++){
@@ -490,37 +655,54 @@
       }
     }
 
+    pcx = player.x + player.w/2; pcy = player.y + player.h/2;
+    for (var bIdx=boosts.length-1; bIdx>=0; bIdx--){
+      var bo = boosts[bIdx];
+      if (Math.hypot(bo.x-pcx, bo.y-pcy) < bo.r + player.w*0.4){
+        player.excitedT = EXCITE_DURATION;
+        boosts.splice(bIdx, 1);
+      }
+    }
+
     var threshold = H*0.42;
     if (player.y < threshold){
-      var dy = threshold - player.y;
+      var dy2 = threshold - player.y;
       player.y = threshold;
-      scrollY -= dy;
+      scrollY -= dy2;
       altitudeM = Math.max(altitudeM, Math.floor(-scrollY/8));
-      for (var k=0;k<platforms.length;k++) platforms[k].y += dy;
+      for (var k=0;k<platforms.length;k++) platforms[k].y += dy2;
+      for (var bk=0;bk<boosts.length;bk++) boosts[bk].y += dy2;
+      for (var hk=0;hk<hazards.length;hk++) hazards[hk].y += dy2;
     }
 
     platforms = platforms.filter(function(p){ return p.y < H + 30 && p.fade > 0; });
+    boosts = boosts.filter(function(b){ return b.y < H + 30; });
+    hazards = hazards.filter(function(h){ return h.y < H + 30; });
+
     var topY = platforms.reduce(function(m,p){ return Math.min(m,p.y); }, H);
     while (topY > -40){
       topY -= rand(60, 95);
       platforms.push(makePlatform(topY));
+      maybeSpawnBoost(topY);
+      maybeSpawnHazard(topY);
     }
 
-    hudAltitude.textContent = altitudeM + 'm';
+    hudAltitude.textContent = altitudeM + ' Å';
 
     if (player.y > H + 40){
-      endGame();
+      endGame('fell');
     }
   }
 
-  function endGame(){
+  function endGame(reason){
     state = 'over';
     var isNew = altitudeM > highScore;
     if (isNew){ highScore = altitudeM; saveBest(); }
-    finalScoreEl.textContent = altitudeM + 'm';
-    finalBestEl.textContent = highScore + 'm';
+    overTitle.innerHTML = reason === 'quenched' ? 'QUENCHED' : 'SIGNAL<br/>LOST';
+    finalScoreEl.textContent = altitudeM + ' Å';
+    finalBestEl.textContent = highScore + ' Å';
     bestScoreBox.classList.toggle('new', isNew);
-    hudBest.textContent = highScore + 'm';
+    hudBest.textContent = highScore + ' Å';
     overScreen.hidden = false;
   }
 
@@ -533,6 +715,8 @@
 
     drawBackground();
     for (var i=0;i<platforms.length;i++) drawPlatform(platforms[i]);
+    for (var bi=0;bi<boosts.length;bi++) drawBoost(boosts[bi]);
+    for (var hi=0;hi<hazards.length;hi++) drawHazard(hazards[hi]);
     if (player && state !== 'over') drawPlayer();
 
     requestAnimationFrame(frame);
@@ -549,14 +733,53 @@
   startBtn.addEventListener('click', startGame);
   retryBtn.addEventListener('click', startGame);
 
-  shareBtn.addEventListener('click', function(){
-    var text = 'I climbed ' + altitudeM + 'm up the acene ladder in Acene Ascent — can you beat me?';
-    if (navigator.share){
-      navigator.share({ title: 'Acene Ascent', text: text, url: GAME_URL }).catch(function(){});
+  function shareText(){
+    return 'I climbed ' + altitudeM + ' \u00c5 up the acene ladder in Acene Ascent — can you beat me?';
+  }
+
+  if (navigator.share) shareNativeBtn.hidden = false;
+
+  shareNativeBtn.addEventListener('click', function(){
+    navigator.share({ title: 'Acene Ascent', text: shareText(), url: GAME_URL }).catch(function(){});
+  });
+
+  function legacyCopy(text){
+    try {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.focus(); ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    } catch(e){}
+  }
+
+  var copyToastTimer = null;
+  function flashCopyToast(){
+    copyToast.hidden = false;
+    clearTimeout(copyToastTimer);
+    copyToastTimer = setTimeout(function(){ copyToast.hidden = true; }, 1700);
+  }
+
+  copyBtn.addEventListener('click', function(){
+    var full = shareText() + ' ' + GAME_URL;
+    if (navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(full).then(flashCopyToast).catch(function(){ legacyCopy(full); flashCopyToast(); });
     } else {
-      var tweetUrl = 'https://twitter.com/intent/tweet?text=' + encodeURIComponent(text) + '&url=' + encodeURIComponent(GAME_URL);
-      window.open(tweetUrl, '_blank', 'noopener');
+      legacyCopy(full); flashCopyToast();
     }
+  });
+
+  xBtn.addEventListener('click', function(){
+    var url = 'https://twitter.com/intent/tweet?text=' + encodeURIComponent(shareText()) + '&url=' + encodeURIComponent(GAME_URL);
+    window.open(url, '_blank', 'noopener');
+  });
+
+  lineBtn.addEventListener('click', function(){
+    var url = 'https://social-plugins.line.me/lineit/share?url=' + encodeURIComponent(GAME_URL) + '&text=' + encodeURIComponent(shareText());
+    window.open(url, '_blank', 'noopener');
   });
 
   window.addEventListener('keydown', function(e){
@@ -596,3 +819,5 @@
   }
 })();
 </script>
+</body>
+</html>
